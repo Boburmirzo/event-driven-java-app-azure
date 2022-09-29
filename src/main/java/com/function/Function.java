@@ -1,11 +1,16 @@
 package com.function;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.function.TelemetryItem.status;
 import com.microsoft.azure.functions.annotation.Cardinality;
 import com.microsoft.azure.functions.annotation.CosmosDBOutput;
 import com.microsoft.azure.functions.annotation.EventHubOutput;
 import com.microsoft.azure.functions.annotation.EventHubTrigger;
 import com.microsoft.azure.functions.annotation.FunctionName;
+import com.microsoft.azure.functions.annotation.QueueOutput;
+import com.microsoft.azure.functions.annotation.QueueTrigger;
 import com.microsoft.azure.functions.annotation.TimerTrigger;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.OutputBinding;
@@ -45,24 +50,52 @@ public class Function {
             collectionName = "TelemetryInfo",
             connectionStringSetting = "CosmosDBConnectionString")
             OutputBinding<TelemetryItem> document,
+        @QueueOutput(
+            name = "queueMsgOut", 
+            queueName = "deadMessagesQueue", 
+            connection = "AzureWebJobsStorage") 
+            OutputBinding<List<TelemetryItem>> queueMessages,    
         final ExecutionContext context) {
 
         context.getLogger().info("Event hub message received: " + item.toString());
 
-        if (item.getPressure() > 30) {
-            item.setNormalPressure(false);
-        } else {
-            item.setNormalPressure(true);
-        }
+        queueMessages.setValue(new ArrayList<TelemetryItem>());
 
-        if (item.getTemperature() < 40) {
-            item.setTemperatureStatus(status.COOL);
-        } else if (item.getTemperature() > 90) {
-            item.setTemperatureStatus(status.HOT);
-        } else {
-            item.setTemperatureStatus(status.WARM);
-        }
+        try {
 
-        document.setValue(item);
+            if (item.getPressure() > 30) {
+                item.setNormalPressure(false);
+            } else {
+                item.setNormalPressure(true);
+            }
+
+            if (item.getTemperature() < 40) {
+                item.setTemperatureStatus(status.COOL);
+            } else if (item.getTemperature() > 90) {
+                item.setTemperatureStatus(status.HOT);
+            } else {
+                item.setTemperatureStatus(status.WARM);
+            }
+
+            // You do more data processing...
+            document.setValue(item);
+
+        } catch (Exception ex) {
+            // If something goes wrong, we write the failed item to the storage queue
+            context.getLogger().info("Error updating status document: " + item.toString());
+            queueMessages.getValue().add(item);
+        }
+    }
+
+    @FunctionName("queueMessagesProcessor")
+    public void run(
+            @QueueTrigger(
+                name = "queueMsgIn", 
+                queueName = "deadMessagesQueue", 
+                connection = "AzureWebJobsStorage") 
+                TelemetryItem queueMessage,
+            final ExecutionContext context) {
+                
+         context.getLogger().info("Failed event hub message received: " + queueMessage.toString());
     }
 }
