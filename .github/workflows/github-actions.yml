@@ -6,7 +6,7 @@ on:
 env:
   AZURE_FUNCTIONAPP_NAME: event-trigger-java-func-app      # set this to your function app name on Azure
   POM_XML_DIRECTORY: '.'                     # set this to the directory which contains pom.xml file
-  POM_FUNCTIONAPP_NAME: event-trigger-java-func-app        # set this to the function app name in your local development environment
+  POM_FUNCTIONAPP_NAME: event-driven-java-app-azure-producer-app        # set this to the function app name in your local development environment
   JAVA_VERSION: '11'                      # set this to the Java version to use
 
 jobs:
