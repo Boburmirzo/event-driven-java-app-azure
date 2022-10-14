@@ -77,6 +77,7 @@ public class Function {
                 item.setTemperatureStatus(status.WARM);
             }
 
+            // You do more data processing...
             document.setValue(item);
 
         } catch (Exception ex) {
